@@ -25,10 +25,11 @@ public class MonitorLayoutFactory {
 
         MonitorDetails leftMonitor = null, rightMonitor = null;
         for (GraphicsDevice gd : ge.getScreenDevices()) {
-            Rectangle bounds = gd.getDefaultConfiguration().getBounds();
-            MonitorDetails monitorDetails = new MonitorDetails(bounds.width, bounds.height);
+            MonitorDetails monitorDetails = new MonitorDetails(
+                    gd.getDisplayMode().getWidth(),
+                    gd.getDisplayMode().getHeight());
 
-            if (bounds.x == 0 && bounds.y == 0) {
+            if (leftMonitor == null) {
                 leftMonitor = monitorDetails;
             } else {
                 rightMonitor = monitorDetails;

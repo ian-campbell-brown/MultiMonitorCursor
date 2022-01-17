@@ -8,7 +8,7 @@ public interface CursorEventsListener {
     /**
      * Updates the listener with the new position details for the mouse cursor.
      *
-     * @param cursorPosition New position for the cursor.
+     * @param cursorMomentum Current momentum the cursor has.
      */
-    void OnCursorMove(CursorMomentumDetails cursorPosition);
+    void OnCursorMove(CursorMomentumDetails cursorMomentum);
 }

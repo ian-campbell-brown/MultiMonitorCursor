@@ -11,20 +11,32 @@ public class MonitorTransitionSmoother implements CursorEventsListener {
     /**
      * TODO - comment
      */
+    private final int FuturePredictionMs = 15;
+
+    /**
+     * TODO - comment
+     */
     private final Cursor cursor;
 
     /**
      * Current layout of the monitors.
      */
     private final MonitorLayout monitorLayout;
+
     /**
      * Flag letting us know if smoothing is required for the cursor when transition monitors.
      */
     private final Boolean smoothingRequired;
+
     /**
      * Flag indicating we should skip the next update.
      */
     private Boolean skipUpdate = false;
+
+    /**
+     * Position of the cursor on the last update.
+     */
+    private Point previousPosition;
 
     /**
      * TODO - MonitorEvents to update the monitor configuration (resolution changes) with out having to restart.
@@ -43,19 +55,19 @@ public class MonitorTransitionSmoother implements CursorEventsListener {
     /**
      * Updates the listener with the new position details for the mouse cursor.
      *
-     * @param cursorPosition New position for the cursor.
+     * @param cursorMomentum Current momentum the cursor has.
      */
     @Override
-    public void OnCursorMove(CursorMomentumDetails cursorPosition) {
+    public void OnCursorMove(CursorMomentumDetails cursorMomentum) {
         if (!this.smoothingRequired || this.skipUpdate) {
             // Smoothing isn't required with current monitor setup so just return.
             this.skipUpdate = false;
             return;
         }
 
-        Point previous = new Point(cursorPosition.previousPosition());
-        Point current = new Point(cursorPosition.currentPosition());
-        Point predicted = new Point(cursorPosition.predictedPosition());
+        Point current = cursorMomentum.currentPosition().position();
+        Point previous = (this.previousPosition == null) ? current : this.previousPosition;
+        Point predicted = cursorMomentum.predictCursorPosition(FuturePredictionMs);
 
         if (this.transitionedMonitor(previous, current)) {
             // Double check we didn't miss a transition that we can attempt to retro-actively smooth.
@@ -66,7 +78,7 @@ public class MonitorTransitionSmoother implements CursorEventsListener {
             // Let's preemptively move the cursor to the correct position on the other monitor.
             Point correctedPosition = this.correctPredictedPoint(current, predicted);
             this.moveMouse(correctedPosition);
-        } else if (!this.transitionedMonitor(current, predicted) && current.x == this.monitorLayout.leftMonitor().widthPx() - 1) {
+        } else if (current.x == this.monitorLayout.leftMonitor().widthPx() - 1) {
             // Stuck on the transition, popover to next monitor.
             predicted.x = current.x + 1;
             this.moveMouse(this.correctPredictedPoint(current, predicted));
@@ -94,9 +106,6 @@ public class MonitorTransitionSmoother implements CursorEventsListener {
             // Transitioning right to left.
             float yPercent = (float) predicted.y / this.monitorLayout.rightMonitor().heightPx();
             predicted.y = (int) (yPercent * this.monitorLayout.leftMonitor().heightPx());
-
-            // Shift onto left monitor.
-            predicted.x = predicted.x / 2; //this.monitorLayout.leftMonitor().widthPx() - 10;
         }
 
         return predicted;

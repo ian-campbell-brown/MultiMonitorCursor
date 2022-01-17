@@ -5,6 +5,7 @@ import com.github.kwhat.jnativehook.mouse.NativeMouseMotionListener;
 
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -17,7 +18,12 @@ public class CursorImpl implements Cursor, NativeMouseMotionListener {
     /**
      * Last measured momentum for the cursor.
      */
-    private CursorMomentumDetails lastMomentum;
+    private CursorPositionDetails lastPosition;
+
+    /**
+     * Current momentum the cursor has.
+     */
+    private CursorMomentumDetails currentMomentum;
 
     /**
      * Flag indicating whether updates are enabled.
@@ -86,29 +92,32 @@ public class CursorImpl implements Cursor, NativeMouseMotionListener {
     }
 
     /**
-     * Returns the current position details of the mouse cursor.
-     *
-     * @return The current position details of the mouse cursor.
+     * Calculate the current momentum details of the mouse cursor.
      */
-    private void getCurrentPosition(Point current) {
-        Point previous = null;
-        Point predicted = null;
+    private void updateCursorMomentum(Point current) {
+        float xSpeed = 0;
+        float ySpeed = 0;
 
-        if (this.lastMomentum != null) {
-            // Predict the next cursor position from the previous position.
-            // TODO - more advanced prediction techniques (don't assume straight line from previous).
-            previous = this.lastMomentum.currentPosition();
+        if (this.lastPosition != null) {
+            long currentTime = new Date().getTime();
+            long timeDif = currentTime - this.lastPosition.timeStamp();
 
-            int xDif = current.x - previous.x;
-            int yDif = current.y - previous.y;
-            predicted = new Point(current.x + xDif, current.y + yDif);
-        } else {
-            // Cursor isn't moving.
-            previous = current;
-            predicted = current;
+            Point previous = this.lastPosition.position();
+
+            xSpeed = (current.x - previous.x) / (float) timeDif;
+            ySpeed = (current.y - previous.y) / (float) timeDif;
         }
 
-        this.lastMomentum = new CursorMomentumDetails(previous, current, predicted);
+        if (Float.isNaN(xSpeed) || Float.isInfinite(xSpeed)) {
+            xSpeed = 0;
+        }
+
+        if (Float.isNaN(ySpeed) || Float.isInfinite(ySpeed)) {
+            ySpeed = 0;
+        }
+
+        this.lastPosition = new CursorPositionDetails(current, new Date().getTime());
+        this.currentMomentum = new CursorMomentumDetails(this.lastPosition, xSpeed, ySpeed);
     }
 
     /**
@@ -120,7 +129,7 @@ public class CursorImpl implements Cursor, NativeMouseMotionListener {
             return;
         }
 
-        this.getCurrentPosition(currentPosition);
-        this.listenerCollection.forEach(listener -> listener.OnCursorMove(this.lastMomentum));
+        this.updateCursorMomentum(currentPosition);
+        this.listenerCollection.forEach(listener -> listener.OnCursorMove(this.currentMomentum));
     }
 }
